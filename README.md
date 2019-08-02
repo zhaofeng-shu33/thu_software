@@ -4,5 +4,4 @@ Download software from Tsinghua Software Center, Script Client
 Develop in process
 
 Supported Software
-* Win10 English
-* Office 2019
+* Microsoft Office 2019
