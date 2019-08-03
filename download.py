@@ -178,7 +178,7 @@ def download_file(session, url):
             while(current_size < size):
                 byte_range = 'bytes=%d-%d' %(current_size, current_size + RE_AUTH_SIZE)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
-                if(verbose):
+                if(VERBOSE):
                     logging.info(json.dumps(r.headers))
                 current_size += download_inner(r, f, bar, current_size_start=current_size)
                 logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
