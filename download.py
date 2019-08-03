@@ -21,7 +21,7 @@ DOWNLOAD_ROOT = 'https://sslvpn.tsinghua.edu.cn/info/czxt/,DanaInfo=its.tsinghua
 VERBOSE = False
 VERBOSE_FILE = 'verbose.txt'
 SAVE_PATH = './'
-RE_AUTH_SIZE = 1024*1024*1024 # 1GB
+RE_AUTH_SIZE = 1024*200
 STUDENT_ID = ''
 PASSWORD = ''
 def get_home(session):
@@ -96,8 +96,10 @@ def login(session, username, userpass):
         if(r.text.find('Invalid username')>0):
             return False
         if(r.text.find('Please wait')>0):
-            logging.info('process_to_start')
+            logging.info('process_to_start')            
             return process_to_start(session, r.text)            
+        if(r.text.find('index.cgi')>0):
+            return get_home(session)            
         if(r.text.find('Last Access Time')>0):
             return confirm_login(session, r.text)            
         if(r.text.find('Preference')>0):
@@ -124,7 +126,7 @@ def download(session, file_id):
             open(VERBOSE_FILE, 'wb+').write(r.text.encode('utf-8'))
         full_url = get_download_url(r.text)
         logging.info(full_url)
-        download_file(session, full_url)
+        return download_file(session, full_url)
     return False;
 
 def logout(session):
@@ -174,14 +176,18 @@ def download_file(session, url):
         if(os.path.exists(file_path)):
             start_size = os.path.getsize(file_path)
         current_size = start_size
-        with open(file_path, 'wb+') as f:
+        with open(file_path, 'ba') as f:
             while(current_size < size):
-                byte_range = 'bytes=%d-%d' %(current_size, current_size + RE_AUTH_SIZE)
+                max_size = current_size + RE_AUTH_SIZE
+                if(max_size > size):
+                    max_size = size
+                byte_range = 'bytes=%d-%d' %(current_size, max_size)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
                 if(VERBOSE):
-                    logging.info(json.dumps(r.headers))
+                    logging.info('content-range' + json.dumps(r.headers['Content-Range']))
                 current_size += download_inner(r, f, bar, current_size_start=current_size)
                 logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
+                logout(session)
                 loginResult = login(session, STUDENT_ID, PASSWORD)
                 if not(loginResult):
                     print("login failed, download failed")
