@@ -20,6 +20,9 @@ DOWNLOAD_ROOT = 'https://sslvpn.tsinghua.edu.cn/info/czxt/,DanaInfo=its.tsinghua
 VERBOSE = False
 VERBOSE_FILE = 'verbose.txt'
 SAVE_PATH = './'
+RE_AUTH_SIZE = 1024*1024*1024 # 1GB
+STUDENT_ID = ''
+PASSWORD = ''
 def get_home(session):
     r = session.get(HOME_URL, verify=False)
     if(r.status_code == 200):
@@ -138,27 +141,45 @@ def str_to_dic(cookie_string):
         cookie_dic[k.strip()] = v.strip()
     return cookie_dic
 
+def download_inner(r, f, bar, current_size_start=0):
+    '''
+        r: response
+        f: file
+        bar: progress bar
+    '''
+    current_size = current_size_start
+    for chunk in r.iter_content(chunk_size=CHUNK_SIZE): 
+        if chunk: # filter out keep-alive new chunks
+            f.write(chunk)
+            current_size += len(chunk)
+            bar.update(current_size)
+    return current_size
+    
 def download_file(session, url):
-    local_filename = url.split('?')[0].split('/')[-1]
+    local_filename = url.split('?')[0].split('/')[-1].split('+')[-1]
     # NOTE the stream=True parameter below
-    with session.get(url, stream=True, verify=False) as r:
-        r.raise_for_status() # raise Error if 404
-        size = 0
-        if(r.headers.get('Content-Length')):
-            size = int(r.headers.get('Content-Length'))
-            current_size = 0
-        file_path = os.path.join(SAVE_PATH, local_filename)
+    # if the file is larger than 2GB, use range.
+    file_path = os.path.join(SAVE_PATH, local_filename)
+    r = session.get(url, stream=True, verify=False)
+    r.raise_for_status() # raise Error if 404
+    size = int(r.headers.get('Content-Length'))
+    bar = progressbar.ProgressBar(max_value=size)
+    if(size <= RE_AUTH_SIZE):    
         with open(file_path, 'wb') as f:
-            if(size == 0):
-                bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
-            else:
-                bar = progressbar.ProgressBar(max_value=size)
-                for chunk in r.iter_content(chunk_size=CHUNK_SIZE): 
-                    if chunk: # filter out keep-alive new chunks
-                        f.write(chunk)
-                        current_size += len(chunk)
-                        bar.update(current_size)
-                    # f.flush()              
+            download_inner(r, f, bar)
+    else:
+        # check if the file exists
+        start_size = 0
+        if(os.path.exists(file_path)):
+            start_size = os.path.getsize(file_path)
+        current_size = start_size
+        with open(file_path, 'wb+') as f:
+            while(current_size < size):
+                byte_range = 'bytes=%d-%d' %(current_size, current_size + RE_AUTH_SIZE)
+                r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
+                current_size += download_inner(r, f, bar, current_size_start=current_size)
+                logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
+                login(session, STUDENT_ID, PASSWORD)
     return local_filename
     
 if __name__ == '__main__':
@@ -174,8 +195,10 @@ if __name__ == '__main__':
     VERBOSE = args.verbose    
     SAVE_PATH = args.save_path
     if(args.debug):
-        pdb.set_trace()    
-    isLogin = login(session, args.student_id, args.password)
+        pdb.set_trace()
+    STUDENT_ID = args.student_id
+    PASSWORD = args.password
+    isLogin = login(session, STUDENT_ID, PASSWORD)
     if(isLogin):
         hasDownloadSucc = False
         try:
