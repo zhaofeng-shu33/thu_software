@@ -4,6 +4,7 @@ import argparse
 import logging
 from datetime import datetime
 import re
+import json
 import os
 
 import requests
@@ -147,13 +148,13 @@ def download_inner(r, f, bar, current_size_start=0):
         f: file
         bar: progress bar
     '''
-    current_size = current_size_start
+    current_size_inner = current_size_start
     for chunk in r.iter_content(chunk_size=CHUNK_SIZE): 
         if chunk: # filter out keep-alive new chunks
             f.write(chunk)
-            current_size += len(chunk)
-            bar.update(current_size)
-    return current_size
+            current_size_inner += len(chunk)
+            bar.update(current_size_inner)
+    return current_size_inner
     
 def download_file(session, url):
     local_filename = url.split('?')[0].split('/')[-1].split('+')[-1]
@@ -177,9 +178,14 @@ def download_file(session, url):
             while(current_size < size):
                 byte_range = 'bytes=%d-%d' %(current_size, current_size + RE_AUTH_SIZE)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
+                if(verbose):
+                    logging.info(json.dumps(r.headers))
                 current_size += download_inner(r, f, bar, current_size_start=current_size)
                 logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
-                login(session, STUDENT_ID, PASSWORD)
+                loginResult = login(session, STUDENT_ID, PASSWORD)
+                if not(loginResult):
+                    print("login failed, download failed")
+                    break;
     return local_filename
     
 if __name__ == '__main__':
