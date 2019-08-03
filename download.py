@@ -4,6 +4,7 @@ import argparse
 import logging
 from datetime import datetime
 import re
+import os
 
 import requests
 from bs4 import BeautifulSoup
@@ -18,6 +19,7 @@ LOGOUT_URL = 'https://sslvpn.tsinghua.edu.cn/dana-na/auth/logout.cgi?delivery=ps
 DOWNLOAD_ROOT = 'https://sslvpn.tsinghua.edu.cn/info/czxt/,DanaInfo=its.tsinghua.edu.cn+'
 VERBOSE = False
 VERBOSE_FILE = 'verbose.txt'
+SAVE_PATH = './'
 def get_home(session):
     r = session.get(HOME_URL, verify=False)
     if(r.status_code == 200):
@@ -145,7 +147,8 @@ def download_file(session, url):
         if(r.headers.get('Content-Length')):
             size = int(r.headers.get('Content-Length'))
             current_size = 0
-        with open(local_filename, 'wb') as f:
+        file_path = os.path.join(SAVE_PATH, local_filename)
+        with open(file_path, 'wb') as f:
             if(size == 0):
                 bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
             else:
@@ -165,9 +168,11 @@ if __name__ == '__main__':
     parser.add_argument('--password', default='abc')
     parser.add_argument('--file_id', default=1663, type=int)
     parser.add_argument('--verbose', default=False, type=bool, nargs='?', const=True, help='whether to save verbose info')    
+    parser.add_argument('--save_path', default='./', help='download file save path')
     parser.add_argument('--debug', default=False, type=bool, nargs='?', const=True, help='whether to enter debug mode')
     args = parser.parse_args()   
     VERBOSE = args.verbose    
+    SAVE_PATH = args.save_path
     if(args.debug):
         pdb.set_trace()    
     isLogin = login(session, args.student_id, args.password)
