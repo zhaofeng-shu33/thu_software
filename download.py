@@ -184,8 +184,10 @@ def download_file(session, url):
                 byte_range = 'bytes=%d-%d' %(current_size, max_size)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
                 if(VERBOSE):
+                    print(r.headers)
                     logging.info('content-range' + r.headers['Content-Range'])
-                current_size = download_inner(r, f, bar, current_size_start=current_size)
+                new_current_size = download_inner(r, f, bar, current_size_start=current_size)
+                current_size = new_current_size
                 logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
                 logout(session)
                 loginResult = login(session, STUDENT_ID, PASSWORD)
