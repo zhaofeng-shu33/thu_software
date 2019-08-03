@@ -184,6 +184,8 @@ def download_file(session, url):
                 byte_range = 'bytes=%d-%d' %(current_size, max_size)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
                 if(VERBOSE):
+                    print(current_size, max_size)
+                    print(r.status_code)
                     print(r.headers)
                     logging.info('content-range' + r.headers['Content-Range'])
                 new_current_size = download_inner(r, f, bar, current_size_start=current_size)
@@ -205,11 +207,13 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', default=False, type=bool, nargs='?', const=True, help='whether to save verbose info')    
     parser.add_argument('--save_path', default='./', help='download file save path')
     parser.add_argument('--debug', default=False, type=bool, nargs='?', const=True, help='whether to enter debug mode')
+    parser.add_argument('--auth_limit', default=1024*1024*1024, type=int, help='logout and login download limit')
     args = parser.parse_args()   
     VERBOSE = args.verbose    
     SAVE_PATH = args.save_path
     if(args.debug):
         pdb.set_trace()
+    RE_AUTH_SIZE = args.auth_limit
     STUDENT_ID = args.student_id
     PASSWORD = args.password
     isLogin = login(session, STUDENT_ID, PASSWORD)
