@@ -177,29 +177,39 @@ def download_file(session, url):
             start_size = os.path.getsize(file_path)
         current_size = start_size
         with open(file_path, 'ba') as f:
-            while(current_size < size):
-                max_size = current_size + RE_AUTH_SIZE
-                if(max_size > size):
-                    max_size = size
-                byte_range = 'bytes=%d-%d' %(current_size, max_size)
-                r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
-                if(VERBOSE):
-                    print(current_size, max_size)
-                    print(r.status_code)
-                    print(r.headers)
-                    logging.info('content-range' + r.headers['Content-Range'])
-                new_current_size = download_inner(r, f, bar, current_size_start=current_size)
-                current_size = new_current_size
-                logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
-                logout(session)
-                loginResult = login(session, STUDENT_ID, PASSWORD)
-                if not(loginResult):
-                    print("login failed, download failed")
-                    break;
-    return local_filename
-    
-if __name__ == '__main__':
+            new_status = 'incomplete'
+            max_size = current_size + RE_AUTH_SIZE
+            if(max_size > size):
+                max_size = size
+                new_status = 'complete'
+            byte_range = 'bytes=%d-%d' %(current_size, max_size)
+            r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
+            if(VERBOSE):
+                print(r.status_code)
+                print(r.headers)
+                logging.info('content-range' + r.headers['Content-Range'])
+            new_current_size = download_inner(r, f, bar, current_size_start=current_size)
+            current_size = new_current_size
+            logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))            
+            return new_status
+    return 'complete'
+
+def download_main(file_id):
     session = requests.Session()
+    isLogin = login(session, STUDENT_ID, PASSWORD)
+    if not(isLogin):
+        return 'login failed'
+    isDownload = False
+    try:
+        isDownload = download(session, file_id)
+    except Exception as e:
+        logging.error(str(e))
+    isLogout = logout(session) 
+    if not(isLogout):
+        return 'logout failed'
+    return isDownload  
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--student_id', default='123')
     parser.add_argument('--password', default='abc')
@@ -216,18 +226,7 @@ if __name__ == '__main__':
     RE_AUTH_SIZE = args.auth_limit
     STUDENT_ID = args.student_id
     PASSWORD = args.password
-    isLogin = login(session, STUDENT_ID, PASSWORD)
-    if(isLogin):
-        hasDownloadSucc = False
-        try:
-            hasDownloadSucc = download(session, args.file_id)        
-        except Exception as e:
-            logging.error(str(e))
-        if (hasDownloadSucc == False):
-            print('download failed')        
-        isLogout = logout(session)
-        if not(isLogout):
-            print("logout failed")
-    else:
-        print("login failed")
-    
+    status = 'incomplete'
+    while(status == 'incomplete'):
+        status = download_main(args.file_id)
+    print(status)
