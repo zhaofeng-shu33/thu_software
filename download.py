@@ -163,6 +163,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--student_id', default='123')
     parser.add_argument('--password', default='abc')
+    parser.add_argument('--file_id', default=1663, type=int)
     parser.add_argument('--verbose', default=False, type=bool, nargs='?', const=True, help='whether to save verbose info')    
     parser.add_argument('--debug', default=False, type=bool, nargs='?', const=True, help='whether to enter debug mode')
     args = parser.parse_args()   
@@ -173,7 +174,7 @@ if __name__ == '__main__':
     if(isLogin):
         hasDownloadSucc = False
         try:
-            hasDownloadSucc = download(session, 1663)        
+            hasDownloadSucc = download(session, args.file_id)        
         except Exception as e:
             logging.error(str(e))
         if (hasDownloadSucc == False):
