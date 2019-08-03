@@ -21,7 +21,7 @@ DOWNLOAD_ROOT = 'https://sslvpn.tsinghua.edu.cn/info/czxt/,DanaInfo=its.tsinghua
 VERBOSE = False
 VERBOSE_FILE = 'verbose.txt'
 SAVE_PATH = './'
-RE_AUTH_SIZE = 1024*200
+RE_AUTH_SIZE = 1024*1024*1024 # 1GB
 STUDENT_ID = ''
 PASSWORD = ''
 def get_home(session):
@@ -184,8 +184,8 @@ def download_file(session, url):
                 byte_range = 'bytes=%d-%d' %(current_size, max_size)
                 r = session.get(url, stream=True, verify=False, headers={'Range': byte_range})
                 if(VERBOSE):
-                    logging.info('content-range' + json.dumps(r.headers['Content-Range']))
-                current_size += download_inner(r, f, bar, current_size_start=current_size)
+                    logging.info('content-range' + r.headers['Content-Range'])
+                current_size = download_inner(r, f, bar, current_size_start=current_size)
                 logging.info('download ' + local_filename + ' %d/%d'%(current_size, size))
                 logout(session)
                 loginResult = login(session, STUDENT_ID, PASSWORD)
